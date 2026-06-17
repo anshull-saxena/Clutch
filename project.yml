@@ -1,0 +1,27 @@
+name: Clutch
+options:
+  bundleIdPrefix: com.yourname
+packages:
+  GRDB:
+    url: https://github.com/groue/GRDB.swift
+    from: 6.0.0
+targets:
+  Clutch:
+    type: application
+    platform: macOS
+    deploymentTarget: "13.0"
+    sources: 
+      - Clutch
+    settings:
+      ENABLE_HARDENED_RUNTIME: YES
+      ENABLE_APP_SANDBOX: NO
+      CODE_SIGN_STYLE: Automatic
+    info:
+      path: Clutch/Info.plist
+      properties:
+        LSUIElement: YES
+        NSUserNotificationAlertStyle: alert
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: NO
+    dependencies:
+      - package: GRDB
