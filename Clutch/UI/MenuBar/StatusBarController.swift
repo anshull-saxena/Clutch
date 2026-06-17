@@ -88,7 +88,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
     }
 
     private static var menuBarIcon: NSImage? {
-        let icon = Bundle.module.image(forResource: "menubar")
+        let icon = Bundle.main.image(forResource: "menubar")
             ?? NSImage(named: "menubar")
         icon?.isTemplate = true
         return icon

@@ -1,5 +1,8 @@
 import Foundation
 import UserNotifications
+import os
+
+private let logger = Logger(subsystem: "com.clutch.app", category: "notifications")
 
 extension Notification.Name {
     static let notificationAuthStatusChanged = Notification.Name("NotificationAuthStatusChanged")
@@ -11,11 +14,13 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     
     private override init() {
         super.init()
+        logger.info("Initializing NotificationManager and setting UNUserNotificationCenter delegate")
         UNUserNotificationCenter.current().delegate = self
     }
 
     func getAuthorizationStatus(completion: @escaping (UNAuthorizationStatus) -> Void) {
         UNUserNotificationCenter.current().getNotificationSettings { settings in
+            logger.info("getAuthorizationStatus = \(settings.authorizationStatus.rawValue) (0:notDetermined, 1:denied, 2:authorized, 3:provisional, 4:ephemeral)")
             DispatchQueue.main.async {
                 completion(settings.authorizationStatus)
             }
@@ -23,7 +28,9 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     }
 
     func requestPermission(completion: ((Bool) -> Void)? = nil) {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
+        logger.info("Requesting notification authorization...")
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
+            logger.info("Authorization request finished. Granted: \(granted), Error: \(error?.localizedDescription ?? "None")")
             DispatchQueue.main.async {
                 NotificationCenter.default.post(name: .notificationAuthStatusChanged, object: nil)
                 completion?(granted)
@@ -32,12 +39,27 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-        completionHandler([.banner, .sound, .badge])
+        logger.info("userNotificationCenter willPresent notification: \(notification.request.identifier)")
+        // Support both banner and alert/sound presentation options
+        if #available(macOS 11.0, *) {
+            completionHandler([.banner, .list, .sound, .badge])
+        } else {
+            completionHandler([.alert, .sound, .badge])
+        }
+    }
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        logger.info("userNotificationCenter didReceive response for identifier: \(response.notification.request.identifier)")
+        completionHandler()
     }
 
     func sendSaveNotification(for event: ClutchEvent) {
+        logger.info("sendSaveNotification called for event: \(event.id)")
         // Stealth mode: silent
-        if ModeManager.shared.currentMode == .stealth { return }
+        if ModeManager.shared.currentMode == .stealth {
+            logger.info("sendSaveNotification skipped because mode is stealth")
+            return
+        }
 
         let copy  = NotificationCopy.saveMessage(for: event)
         let content = UNMutableNotificationContent()
@@ -47,45 +69,68 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         // No sound for late-night saves (mode = threeAM)
         if ModeManager.shared.currentMode == .threeAM {
             content.sound = .none
+        } else {
+            content.sound = UNNotificationSound(named: UNNotificationSoundName(rawValue: "rizz.wav"))
         }
 
         let request = UNNotificationRequest(
-            identifier: event.id.uuidString,
+            identifier: "com.clutch.save",
             content: content,
             trigger: nil  // deliver immediately
         )
 
-        UNUserNotificationCenter.current().add(request) { error in
-            if let error = error { print("notification error: \(error.localizedDescription)") }
+        logger.info("Adding notification request \(request.identifier) to notification center...")
+        let center = UNUserNotificationCenter.current()
+        center.removeAllDeliveredNotifications()
+        center.add(request) { error in
+            if let error = error {
+                logger.error("Failed to schedule notification: \(error.localizedDescription)")
+            } else {
+                logger.info("Notification successfully added to UNUserNotificationCenter")
+            }
         }
     }
 
     func sendBadgeNotification(_ badge: Badge) {
+        logger.info("sendBadgeNotification called for badge: \(badge.name)")
         let content = UNMutableNotificationContent()
         content.title = "clutch badge earned"
         content.body  = "you unlocked the '\(badge.name)' badge. slay."
-        content.sound = .default
+        content.sound = UNNotificationSound(named: UNNotificationSoundName(rawValue: "rizz.wav"))
 
         let request = UNNotificationRequest(
-            identifier: UUID().uuidString,
+            identifier: "com.clutch.badge",
             content: content,
             trigger: nil
         )
         
-        UNUserNotificationCenter.current().add(request) { error in
-            if let error = error { print("notification error: \(error.localizedDescription)") }
+        let center = UNUserNotificationCenter.current()
+        center.removeAllDeliveredNotifications()
+        center.add(request) { error in
+            if let error = error {
+                logger.error("Failed to schedule badge notification: \(error.localizedDescription)")
+            } else {
+                logger.info("Badge notification successfully added")
+            }
         }
     }
 
     func sendCustomNotification(title: String, body: String) {
+        logger.info("sendCustomNotification called: \(title) - \(body)")
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
-        content.sound = .default
+        content.sound = UNNotificationSound(named: UNNotificationSoundName(rawValue: "rizz.wav"))
 
-        let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
-        UNUserNotificationCenter.current().add(request) { error in
-            if let error = error { print("notification error: \(error.localizedDescription)") }
+        let request = UNNotificationRequest(identifier: "com.clutch.test", content: content, trigger: nil)
+        let center = UNUserNotificationCenter.current()
+        center.removeAllDeliveredNotifications()
+        center.add(request) { error in
+            if let error = error {
+                logger.error("Failed to schedule custom notification: \(error.localizedDescription)")
+            } else {
+                logger.info("Custom notification successfully added")
+            }
         }
     }
 }

@@ -9,6 +9,8 @@ final class AudioController {
 
     private var prePlugVolume: Float = 0.5
     private var wasMuted: Bool = false
+    private var prePlugInputVolume: Float = 1.0
+    private var wasInputMuted: Bool = false
 
     private var isMonitoringPlayback = false
     private var playbackListenerBlock: AudioObjectPropertyListenerBlock?
@@ -31,15 +33,34 @@ final class AudioController {
     func muteInput() {
         audioQueue.sync {
             let inputDevice = getDefaultInputDevice()
-            var val: UInt32 = 1
-            var address = AudioObjectPropertyAddress(
+            if inputDevice == kAudioObjectUnknown { return }
+
+            // Save state
+            wasInputMuted = getInputMuted(for: inputDevice)
+            prePlugInputVolume = getInputVolume(for: inputDevice)
+
+            // 1. Try to set kAudioDevicePropertyMute to 1
+            var muteVal: UInt32 = 1
+            var muteAddress = AudioObjectPropertyAddress(
                 mSelector: kAudioDevicePropertyMute,
                 mScope:    kAudioDevicePropertyScopeInput,
                 mElement:  kAudioObjectPropertyElementMain
             )
             AudioObjectSetPropertyData(
-                inputDevice, &address, 0, nil,
-                UInt32(MemoryLayout<UInt32>.size), &val
+                inputDevice, &muteAddress, 0, nil,
+                UInt32(MemoryLayout<UInt32>.size), &muteVal
+            )
+
+            // 2. Also set the input volume (gain) to 0.0 to be sure it is muted
+            var volVal = Float32(0.0)
+            var volAddress = AudioObjectPropertyAddress(
+                mSelector: kAudioHardwareServiceDeviceProperty_VirtualMainVolume,
+                mScope:    kAudioDevicePropertyScopeInput,
+                mElement:  kAudioObjectPropertyElementMain
+            )
+            AudioObjectSetPropertyData(
+                inputDevice, &volAddress, 0, nil,
+                UInt32(MemoryLayout<Float32>.size), &volVal
             )
         }
     }
@@ -49,10 +70,39 @@ final class AudioController {
         guard autoRestore else { return }
 
         audioQueue.sync {
-            guard !wasMuted else { return }
+            // Restore Output
+            if !wasMuted {
+                let defaultDevice = getDefaultOutputDevice()
+                setMuted(false, for: defaultDevice)
+            }
 
-            let defaultDevice = getDefaultOutputDevice()
-            setMuted(false, for: defaultDevice)
+            // Restore Input
+            if !wasInputMuted {
+                let inputDevice = getDefaultInputDevice()
+                if inputDevice != kAudioObjectUnknown {
+                    var muteVal: UInt32 = 0
+                    var muteAddress = AudioObjectPropertyAddress(
+                        mSelector: kAudioDevicePropertyMute,
+                        mScope:    kAudioDevicePropertyScopeInput,
+                        mElement:  kAudioObjectPropertyElementMain
+                    )
+                    AudioObjectSetPropertyData(
+                        inputDevice, &muteAddress, 0, nil,
+                        UInt32(MemoryLayout<UInt32>.size), &muteVal
+                    )
+
+                    var volVal = Float32(prePlugInputVolume)
+                    var volAddress = AudioObjectPropertyAddress(
+                        mSelector: kAudioHardwareServiceDeviceProperty_VirtualMainVolume,
+                        mScope:    kAudioDevicePropertyScopeInput,
+                        mElement:  kAudioObjectPropertyElementMain
+                    )
+                    AudioObjectSetPropertyData(
+                        inputDevice, &volAddress, 0, nil,
+                        UInt32(MemoryLayout<Float32>.size), &volVal
+                    )
+                }
+            }
         }
     }
 
@@ -286,5 +336,29 @@ final class AudioController {
                 ModeManager.shared.triggerParentZoneHeadsUpIfNeeded()
             }
         }
+    }
+
+    private func getInputMuted(for deviceID: AudioDeviceID) -> Bool {
+        var muted: UInt32 = 0
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyMute,
+            mScope:    kAudioDevicePropertyScopeInput,
+            mElement:  kAudioObjectPropertyElementMain
+        )
+        var dataSize = UInt32(MemoryLayout<UInt32>.size)
+        AudioObjectGetPropertyData(deviceID, &address, 0, nil, &dataSize, &muted)
+        return muted != 0
+    }
+
+    private func getInputVolume(for deviceID: AudioDeviceID) -> Float {
+        var volume: Float32 = 1.0
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwareServiceDeviceProperty_VirtualMainVolume,
+            mScope:    kAudioDevicePropertyScopeInput,
+            mElement:  kAudioObjectPropertyElementMain
+        )
+        var dataSize = UInt32(MemoryLayout<Float32>.size)
+        AudioObjectGetPropertyData(deviceID, &address, 0, nil, &dataSize, &volume)
+        return volume
     }
 }

@@ -23,6 +23,9 @@ final class ModeSuggester: NSObject {
         "com.microsoft.Powerpoint":   .stealth,
     ]
 
+    private var lastSuggestionTimes: [String: Date] = [:]
+    private var cancellables = Set<AnyCancellable>()
+
     private override init() {
         super.init()
         NSWorkspace.shared.notificationCenter.addObserver(
@@ -31,6 +34,13 @@ final class ModeSuggester: NSObject {
             name: NSWorkspace.didActivateApplicationNotification,
             object: nil
         )
+
+        // Clear suggestion times when the user changes mode
+        ModeManager.shared.$currentMode
+            .sink { [weak self] _ in
+                self?.lastSuggestionTimes.removeAll()
+            }
+            .store(in: &cancellables)
     }
 
     @objc private func activeAppChanged(_ notification: Notification) {
@@ -39,7 +49,23 @@ final class ModeSuggester: NSObject {
         else { return }
 
         if let mode = appModeRules[bundleID] {
-            suggestedMode = mode
+            if mode != ModeManager.shared.currentMode {
+                // If this suggestion is already active, don't trigger it again
+                if suggestedMode == mode {
+                    return
+                }
+
+                // Cooldown: 60 seconds per bundle ID
+                let now = Date()
+                if let lastTime = lastSuggestionTimes[bundleID], now.timeIntervalSince(lastTime) < 60 {
+                    return
+                }
+
+                lastSuggestionTimes[bundleID] = now
+                suggestedMode = mode
+            } else {
+                suggestedMode = nil
+            }
         } else {
             suggestedMode = nil
         }

@@ -45,6 +45,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         _ = ModeSuggester.shared
+
+        ModeSuggester.shared.$suggestedMode
+            .receive(on: DispatchQueue.main)
+            .sink { mode in
+                if let mode = mode {
+                    SuggestionWindowController.shared.show(for: mode)
+                } else {
+                    SuggestionWindowController.shared.close()
+                }
+            }
+            .store(in: &cancellables)
     }
 
     private func handleUnplug(_ device: AudioDeviceInfo) {
@@ -55,7 +66,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        if currentMode == .callMode {
+        let isCallAppRunning = ModeSuggester.shared.suggestedMode == .callMode
+        if currentMode == .callMode || isCallAppRunning {
             audio.muteInput()
         }
 

@@ -1,4 +1,8 @@
 import AppKit
+import Foundation
+
+setbuf(stdout, nil)
+setbuf(stderr, nil)
 
 print("main.swift: Starting NSApplication setup")
 let app = NSApplication.shared

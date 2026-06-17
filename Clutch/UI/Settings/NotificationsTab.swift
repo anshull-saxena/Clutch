@@ -60,6 +60,17 @@ struct NotificationsTab: View {
                         .foregroundStyle(.green)
                 }
             }
+
+            Section(header: Text("Test Notifications")) {
+                Button("Send Test Notification") {
+                    print("NotificationsTab: Clicked Send Test Notification button")
+                    NotificationManager.shared.sendCustomNotification(
+                        title: "clutch test",
+                        body: "if you see this, notifications are working."
+                    )
+                }
+                .disabled(authStatus != .authorized && authStatus != .provisional)
+            }
         }
         .formStyle(.grouped)
         .onAppear(perform: refreshStatus)
