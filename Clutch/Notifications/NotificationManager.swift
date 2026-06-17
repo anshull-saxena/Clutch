@@ -70,7 +70,7 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         if ModeManager.shared.currentMode == .threeAM {
             content.sound = .none
         } else {
-            content.sound = UNNotificationSound(named: UNNotificationSoundName(rawValue: "rizz_sound.aiff"))
+            content.sound = UNNotificationSound(named: UNNotificationSoundName(rawValue: "rizz_sound_mono.aiff"))
         }
 
         let request = UNNotificationRequest(
@@ -96,7 +96,7 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         let content = UNMutableNotificationContent()
         content.title = "clutch badge earned"
         content.body  = "you unlocked the '\(badge.name)' badge. slay."
-        content.sound = UNNotificationSound(named: UNNotificationSoundName(rawValue: "rizz_sound.aiff"))
+        content.sound = UNNotificationSound(named: UNNotificationSoundName(rawValue: "rizz_sound_mono.aiff"))
 
         let request = UNNotificationRequest(
             identifier: "com.clutch.badge",
@@ -120,7 +120,7 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
-        content.sound = UNNotificationSound(named: UNNotificationSoundName(rawValue: "rizz_sound.aiff"))
+        content.sound = UNNotificationSound(named: UNNotificationSoundName(rawValue: "rizz_sound_mono.aiff"))
 
         let request = UNNotificationRequest(identifier: "com.clutch.test", content: content, trigger: nil)
         let center = UNUserNotificationCenter.current()
