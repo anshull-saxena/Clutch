@@ -85,7 +85,7 @@ cp "$WORKSPACE_DIR/Clutch/Resources/menubar@2x.png" "$APP_DIR/Contents/Resources
 
 echo "=== Copying audio assets ==="
 cp "$WORKSPACE_DIR/Clutch/Resources/Sounds/clutch_save.aiff" "$APP_DIR/Contents/Resources/clutch_save.aiff"
-cp "$WORKSPACE_DIR/rizz.wav" "$APP_DIR/Contents/Resources/rizz.wav" 2>/dev/null || true
+cp "$WORKSPACE_DIR/rizz_sound.aiff" "$APP_DIR/Contents/Resources/rizz_sound.aiff" 2>/dev/null || true
 echo "=== Signing App ==="
 codesign --force --deep --sign - "$APP_DIR"
 
