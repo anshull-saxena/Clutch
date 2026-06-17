@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="Clutch/Resources/Assets.xcassets/AppIcon.appiconset/icon.png" width="128" height="128" alt="Clutch Logo">
+  <img src="Clutch/Resources/Assets.xcassets/MenuBarIcon.imageset/menubar.png" width="128" height="128" alt="Clutch Logo">
   <h1>Clutch</h1>
   <p><strong>The menu bar app that saves your dignity.</strong></p>
 </div>
